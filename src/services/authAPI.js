@@ -1,6 +1,6 @@
+// src/services/authAPI.js
 import axios from 'axios';
-
-const API_URL = 'http://127.0.0.1:5000/auth';
+import API_URL from "./localhostAPI";
 
 // Обработка ошибок централизованно
 const handleError = (error) => {
@@ -18,7 +18,7 @@ const handleError = (error) => {
 
 export const register = async (userData) => {
   try {
-    const response = await axios.post(`${API_URL}/register`, userData);
+    const response = await axios.post(API_URL('auth/register'), userData);
     return response.data; // Возвращаем ответ от сервера
   } catch (error) {
     const errorMessage = handleError(error);
@@ -29,9 +29,10 @@ export const register = async (userData) => {
 
 export const login = async (credentials) => {
   try {
-    const response = await axios.post(`${API_URL}/login`, credentials);
+    const response = await axios.post(API_URL('auth/login'), credentials);
     if (response.data.access_token) {
       localStorage.setItem('token', response.data.access_token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
     }
     return response.data;
   } catch (error) {
@@ -49,7 +50,7 @@ export const getCurrentUser = async () => {
       throw new Error('No token found');
     }
 
-    const response = await axios.get(`${API_URL}/profile`, {
+    const response = await axios.get(API_URL('auth/profile'), {
       headers: {
         Authorization: `Bearer ${token}`, // Отправляем токен в заголовке
       },
@@ -71,12 +72,13 @@ export const logout = async () => {
       throw new Error('No token found');
     }
 
-    const response = await axios.post(`${API_URL}/logout`, {}, {
+    const response = await axios.post(API_URL('auth/logout'), {}, {
       headers: {
         Authorization: `Bearer ${token}`, // Отправляем токен в заголовке
       },
     });
     localStorage.removeItem('token'); // Удаляем токен из локального хранилища
+    localStorage.removeItem('user'); // Remove user data from localStorage
     return response.data;
   } catch (error) {
     const errorMessage = handleError(error);

@@ -1,71 +1,68 @@
-import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { loginAsync } from './authSlice';
+// src/features/auth/LoginPage.jsx
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { login } from '../../services/authAPI';
 
 const LoginPage = () => {
-  const dispatch = useDispatch();
+  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  const { loading, error, isAuthenticated } = useSelector((state) => state.auth);
-
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
-  useEffect(() => {
-    // Перенаправление, если пользователь уже авторизован
-    if (isAuthenticated) {
-      navigate('/dashboard');
-    }
-  }, [isAuthenticated, navigate]);
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!email || !password) {
-      return;
-    }
-
     try {
-      await dispatch(loginAsync({ email, password })).unwrap();
-      navigate('/dashboard'); // Перенаправление после успешного логина
+      const data = await login(formData);
+
+      // Сақтаймыз: рольді, email-ді (немесе басқа мәліметті)
+      localStorage.setItem('role', data.user.role); // Flask-тен role келетініне көз жеткіз
+      localStorage.setItem('user', JSON.stringify(data.user));
+
+      // Рөлге байланысты бағыттау
+      if (data.user.role === 'admin') {
+        navigate('/admin');
+      } else if (data.user.role === 'seller') {
+        navigate('/seller');
+      } else {
+        navigate('/dashboard');
+      }
+
     } catch (err) {
-      // Ошибка будет обработана в slice
+      setError(err.message);
     }
   };
 
   return (
-    <div className="flex justify-center items-center h-screen">
-      <form
-        className="w-full max-w-sm p-4 bg-white shadow-md rounded-lg"
-        onSubmit={handleSubmit}
-      >
-        <h2 className="text-2xl font-semibold text-center mb-6">Login</h2>
-
-        {error && <p className="text-red-500 text-center mb-4">{error}</p>}
-
+    <div className="p-4 max-w-md mx-auto mt-20 bg-white shadow-md rounded-lg">
+      <h2 className="text-2xl font-bold mb-4 text-center text-blue-600">Login</h2>
+      <form onSubmit={handleSubmit} className="space-y-4">
         <input
+          name="email"
           type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
           placeholder="Email"
-          className="mb-4 p-2 border border-gray-300 rounded w-full"
+          value={formData.email}
+          onChange={handleChange}
+          className="w-full p-2 border border-gray-300 rounded"
+          required
         />
-
         <input
+          name="password"
           type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
           placeholder="Password"
-          className="mb-4 p-2 border border-gray-300 rounded w-full"
+          value={formData.password}
+          onChange={handleChange}
+          className="w-full p-2 border border-gray-300 rounded"
+          required
         />
-
+        {error && <p className="text-red-500">{error}</p>}
         <button
           type="submit"
-          className="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600"
-          disabled={loading}
+          className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition"
         >
-          {loading ? 'Logging in...' : 'Log In'}
+          Login
         </button>
       </form>
     </div>

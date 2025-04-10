@@ -1,17 +1,24 @@
 import axios from "axios";
-
-const API_URL = "http://127.0.0.1:5000/products"; // URL вашего Flask API
+import API_URL from "./localhostAPI";
 
 // Получение всех продуктов
 export const getProducts = async () => {
   try {
-    const response = await axios.get(API_URL);
+    const response = await axios.get(API_URL('products'));
     return response.data;
   } catch (error) {
-    console.error(
-      "Error fetching products:",
-      error.response?.data || error.message
-    );
+    console.error("Error fetching products:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// Получение одного продукта по ID
+export const getProductById = async (productId) => {
+  try {
+    const response = await axios.get(API_URL(`products/${productId}`));
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching product by ID:", error.response?.data || error.message);
     throw error;
   }
 };
@@ -19,15 +26,12 @@ export const getProducts = async () => {
 // Фильтрация продуктов по имени
 export const filterProducts = async (name) => {
   try {
-    const response = await axios.get(`${API_URL}/filter`, {
+    const response = await axios.get(API_URL('products/filter'), {
       params: { name },
     });
     return response.data;
   } catch (error) {
-    console.error(
-      "Error filtering products:",
-      error.response?.data || error.message
-    );
+    console.error("Error filtering products:", error.response?.data || error.message);
     throw error;
   }
 };
@@ -36,21 +40,16 @@ export const filterProducts = async (name) => {
 export const addProduct = async (productData) => {
   try {
     const token = localStorage.getItem("token");
-    if (!token) {
-      throw new Error("No token found");
-    }
+    if (!token) throw new Error("No token found");
 
-    const response = await axios.post(API_URL, productData, {
+    const response = await axios.post(API_URL('products'), productData, {
       headers: {
-        Authorization: `Bearer ${token}`, // Отправляем токен в заголовке
+        Authorization: `Bearer ${token}`,
       },
     });
     return response.data;
   } catch (error) {
-    console.error(
-      "Error adding product:",
-      error.response?.data || error.message
-    );
+    console.error("Error adding product:", error.response?.data || error.message);
     throw error;
   }
 };
@@ -59,21 +58,16 @@ export const addProduct = async (productData) => {
 export const updateProduct = async (productId, productData) => {
   try {
     const token = localStorage.getItem("token");
-    if (!token) {
-      throw new Error("No token found");
-    }
+    if (!token) throw new Error("No token found");
 
-    const response = await axios.put(`${API_URL}/${productId}`, productData, {
+    const response = await axios.put(API_URL(`products/${productId}`), productData, {
       headers: {
-        Authorization: `Bearer ${token}`, // Отправляем токен в заголовке
+        Authorization: `Bearer ${token}`,
       },
     });
     return response.data;
   } catch (error) {
-    console.error(
-      "Error updating product:",
-      error.response?.data || error.message
-    );
+    console.error("Error updating product:", error.response?.data || error.message);
     throw error;
   }
 };
@@ -82,21 +76,16 @@ export const updateProduct = async (productId, productData) => {
 export const deleteProduct = async (productId) => {
   try {
     const token = localStorage.getItem("token");
-    if (!token) {
-      throw new Error("No token found");
-    }
+    if (!token) throw new Error("No token found");
 
-    const response = await axios.delete(`${API_URL}/${productId}`, {
+    const response = await axios.delete(API_URL(`products/${productId}`), {
       headers: {
-        Authorization: `Bearer ${token}`, // Отправляем токен в заголовке
+        Authorization: `Bearer ${token}`,
       },
     });
     return response.data;
   } catch (error) {
-    console.error(
-      "Error deleting product:",
-      error.response?.data || error.message
-    );
+    console.error("Error deleting product:", error.response?.data || error.message);
     throw error;
   }
 };
@@ -105,25 +94,16 @@ export const deleteProduct = async (productId) => {
 export const buyProduct = async (productId) => {
   try {
     const token = localStorage.getItem("token");
-    if (!token) {
-      throw new Error("No token found");
-    }
+    if (!token) throw new Error("No token found");
 
-    const response = await axios.post(
-      `${API_URL}/buy/${productId}`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${token}`, // Отправляем токен в заголовке
-        },
-      }
-    );
+    const response = await axios.post(API_URL(`products/buy/${productId}`), {}, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
     return response.data;
   } catch (error) {
-    console.error(
-      "Error buying product:",
-      error.response?.data || error.message
-    );
+    console.error("Error buying product:", error.response?.data || error.message);
     throw error;
   }
 };

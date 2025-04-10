@@ -1,23 +1,25 @@
+// src/features/auth/authSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { login } from '../../services/authAPI'; // Импортируем API запрос
+import { login, getCurrentUser } from '../../services/authAPI';
 
-// Асинхронный экшен для логина
+// Async login thunk
 export const loginAsync = createAsyncThunk(
   'auth/login',
   async ({ email, password }, { rejectWithValue }) => {
     try {
       const data = await login({ email, password });
-      return data; // Возвращаем данные от API
+      const user = await getCurrentUser();
+      return { access_token: data.access_token, user };
     } catch (error) {
-      return rejectWithValue(error.message); // Если ошибка, возвращаем сообщение об ошибке
+      return rejectWithValue(error.message);
     }
   }
 );
 
 const initialState = {
-  token: localStorage.getItem('token') || null, // Получаем токен из localStorage при старте
-  user: null,
-  isAuthenticated: false,
+  token: localStorage.getItem('token') || null,
+  user: localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null, // Parse the user inf,
+  isAuthenticated: !!localStorage.getItem('token'),
   loading: false,
   error: null,
 };
@@ -48,11 +50,10 @@ const authSlice = createSlice({
       })
       .addCase(loginAsync.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload; // Устанавливаем ошибку при отказе
+        state.error = action.payload;
       });
   },
 });
 
 export const { logout } = authSlice.actions;
-
 export default authSlice.reducer;
