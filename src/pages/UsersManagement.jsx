@@ -1,155 +1,98 @@
 // src/pages/UsersManagement.jsx
-import { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
-import bcrypt from 'bcryptjs';
+import React, { useEffect, useState } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchUsersAsync, updateUserRoleAsync } from '../redux/userSlice';
+import { selectCanPerformAction } from '../redux/permissionSlice';
+import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, Pagination, Button } from '@nextui-org/react';
+import { toast } from 'react-toastify';
 
-export default function UsersManagement() {
-  const [users, setUsers] = useState([]);
-  const [newUser, setNewUser] = useState({ username: '', password: '', role: 'client' });
-  const [roles] = useState(['admin', 'client', 'vet', 'seller']);
-  const currentUser = useSelector(state => state.user?.user);
+const UsersManagementPage = () => {
+  const dispatch = useDispatch();
+  const { items: users, loading, error } = useSelector(state => state.users);
+  const currentRole = useSelector(state => state.auth.user?.role);
+  const canManageUsers = useSelector(state => selectCanPerformAction(state, 'manage_users'));
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
-    fetch('http://localhost:5000/users')
-      .then(res => res.json())
-      .then(data => setUsers(data));
-  }, []);
+    if (canManageUsers) {
+      dispatch(fetchUsersAsync());
+    } else {
+      toast.error('У вас нет прав для просмотра пользователей.');
+    }
+  }, [dispatch, canManageUsers]);
 
-  const handleAddUser = async (e) => {
-    e.preventDefault();
-
-    // Хешируем пароль перед отправкой
-    const hashedPassword = await bcrypt.hash(newUser.password, 10);
-
-    // Отправляем данные с хешированным паролем
-    fetch('http://localhost:5000/users', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...newUser, password: hashedPassword }),
-    })
-      .then(res => res.json())
-      .then(data => {
-        setUsers([...users, data]);
-        setNewUser({ username: '', password: '', role: 'client' });
-      })
-      .catch(err => alert('Ошибка при добавлении пользователя'));
-  };
-
-  const handleRoleChange = (id, newRole) => {
-    if (currentUser.role !== 'admin') {
-      alert('Только администратор может изменять роль пользователей!');
+  const handleRoleUpdate = (userId, newRole) => {
+    if (currentRole !== 'OWNER') {
+      toast.error('Только владелец может изменять роли.');
       return;
     }
-
-    if (newRole === 'admin') {
-      alert('Невозможно изменить роль на админ!');
-      return;
-    }
-
-    fetch(`http://localhost:5000/users/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: newRole })
-    }).then(() => {
-      setUsers(users.map(u => u.id === id ? { ...u, role: newRole } : u));
-    });
+    dispatch(updateUserRoleAsync({ id: userId, role: newRole }))
+      .unwrap()
+      .then(() => toast.success(`Роль пользователя обновлена на ${newRole}!`))
+      .catch(err => toast.error(`Ошибка обновления роли: ${err}`));
   };
 
-  const handleDelete = (id) => {
-    if (!window.confirm("Удалить пользователя?")) return;
-
-    fetch(`http://localhost:5000/users/${id}`, {
-      method: 'DELETE'
-    }).then(() => {
-      setUsers(users.filter(u => u.id !== id));
-    });
-  };
+  // Pagination logic
+  const totalPages = Math.ceil(users.length / itemsPerPage);
+  const paginatedUsers = users.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
-      <h1 className="text-3xl font-semibold text-center text-green-600 mb-6">Управление пользователями</h1>
+    <div className="p-6 max-w-4xl mx-auto">
+      <h2 className="text-2xl font-bold mb-4">Управление пользователями</h2>
 
-      {/* Форма для добавления нового пользователя */}
-      <form onSubmit={handleAddUser} className="bg-white shadow-md rounded-lg p-6 mb-8">
-        <div className="mb-4">
-          <input
-            type="text"
-            placeholder="Имя"
-            value={newUser.username}
-            onChange={e => setNewUser({ ...newUser, username: e.target.value })}
-            className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-green-500"
-            required
-          />
-        </div>
-        <div className="mb-4">
-          <input
-            minLength={8}
-            type="password"
-            placeholder="Пароль"
-            value={newUser.password}
-            onChange={e => setNewUser({ ...newUser, password: e.target.value })}
-            className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-green-500"
-            required
-          />
-        </div>
-        <div className="mb-4">
-          <select
-            value={newUser.role}
-            onChange={e => setNewUser({ ...newUser, role: e.target.value })}
-            className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-green-500"
-          >
-            {roles.map(role => (
-              <option key={role} value={role}>{role}</option>
-            ))}
-          </select>
-        </div>
-        <button
-          type="submit"
-          className="bg-green-600 text-white px-6 py-3 rounded-lg w-full hover:bg-green-700 transition duration-300"
-        >
-          Добавить пользователя
-        </button>
-      </form>
+      {loading && <p className="text-gray-600">Загрузка пользователей...</p>}
+      {error && <p className="text-red-500">Ошибка: {error}</p>}
 
-      {/* Таблица пользователей */}
-      <table className="min-w-full table-auto bg-white shadow-md rounded-lg">
-        <thead className="bg-green-200">
-          <tr>
-            <th className="border p-3 text-left">ID</th>
-            <th className="border p-3 text-left">Имя</th>
-            <th className="border p-3 text-left">Роль</th>
-            <th className="border p-3 text-left">Действия</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map(user => (
-            <tr key={user.id} className="border-t">
-              <td className="border p-3">{user.id}</td>
-              <td className="border p-3">{user.username}</td>
-              <td className="border p-3">
-                <select
-                  value={user.role}
-                  onChange={e => handleRoleChange(user.id, e.target.value)}
-                  className="p-2 rounded-lg focus:ring-2 focus:ring-green-500"
-                  disabled={user.role === 'admin' || user.id === currentUser.id || currentUser.role !== 'admin'}
-                >
-                  {roles.filter(role => role !== 'admin').map(role => (
-                    <option key={role} value={role}>{role}</option>
-                  ))}
-                </select>
-              </td>
-              <td className="border p-3">
-                <button
-                  onClick={() => handleDelete(user.id)}
-                  className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition duration-300"
-                >
-                  Удалить
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {!loading && !error && (
+        <>
+          <Table aria-label="Таблица пользователей">
+            <TableHeader>
+              <TableColumn>Имя</TableColumn>
+              <TableColumn>Email</TableColumn>
+              <TableColumn>Роль</TableColumn>
+              <TableColumn>Действия</TableColumn>
+            </TableHeader>
+            <TableBody>
+              {paginatedUsers.map(user => (
+                <TableRow key={user.id}>
+                  <TableCell>{user.username}</TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell>{user.role}</TableCell>
+                  <TableCell>
+                    {currentRole === 'OWNER' && (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onPress={() => handleRoleUpdate(user.id, 'ADMIN')}
+                          disabled={user.role === 'ADMIN'}
+                        >
+                          Назначить админом
+                        </Button>
+                        <Button
+                          size="sm"
+                          onPress={() => handleRoleUpdate(user.id, 'SELLER')}
+                          disabled={user.role === 'SELLER'}
+                        >
+                          Назначить продавцом
+                        </Button>
+                      </div>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <Pagination
+            total={totalPages}
+            page={page}
+            onChange={setPage}
+            className="mt-4"
+          />
+        </>
+      )}
     </div>
   );
-}
+};
+
+export default UsersManagementPage;

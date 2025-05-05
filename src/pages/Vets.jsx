@@ -1,48 +1,35 @@
+// src/pages/Vets.jsx
 import { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { fetchAnimals, deleteAnimalAsync } from '../redux/animalSlice';
+import { fetchVetsThunk } from '../redux/vetSlice';
+import { fetchAnimalsThunk, deleteAnimalAsync, addAnimalAsync, updateAnimalAsync } from '../redux/animalSlice';
+import { toast } from 'react-toastify';
 
 export default function Vets() {
   const dispatch = useDispatch();
-  const user = useSelector((state) => state.user);
-  const role = user?.role;
-
+  const { role } = useSelector((state) => state.auth);
+  const { items: vets, loading: vetsLoading, error: vetsError } = useSelector((state) => state.vets);
   const { items: animals, loading: animalsLoading, error: animalsError } = useSelector((state) => state.animals);
-
-  const [vets, setVets] = useState([]);
-  const [vetsLoading, setVetsLoading] = useState(true);
-  const [vetsError, setVetsError] = useState(null);
 
   const [newAnimal, setNewAnimal] = useState({ name: '', type: '', vetId: '', image: '' });
   const [editAnimal, setEditAnimal] = useState(null);
 
   useEffect(() => {
-    const fetchVets = async () => {
-      try {
-        const res = await fetch('http://localhost:5000/vets');
-        if (!res.ok) throw new Error('Ошибка загрузки ветеринаров');
-        const data = await res.json();
-        setVets(data);
-        setVetsError(null);
-      } catch (err) {
-        setVetsError(err.message);
-      } finally {
-        setVetsLoading(false);
-      }
-    };
-
-    fetchVets();
-    dispatch(fetchAnimals());
+    dispatch(fetchVetsThunk());
+    dispatch(fetchAnimalsThunk());
   }, [dispatch]);
 
   const handleDeleteAnimal = useCallback(
     (id) => {
       if (role !== 'vet') {
-        alert('У вас нет прав на удаление животного');
+        toast.error('У вас нет прав на удаление животного');
         return;
       }
       if (window.confirm('Удалить животное?')) {
-        dispatch(deleteAnimalAsync(id));
+        dispatch(deleteAnimalAsync(id))
+          .unwrap()
+          .then(() => toast.success('Животное успешно удалено!'))
+          .catch((err) => toast.error(`Ошибка удаления: ${err}`));
       }
     },
     [dispatch, role]
@@ -50,40 +37,39 @@ export default function Vets() {
 
   const handleAddAnimal = useCallback(() => {
     if (role !== 'vet') {
-      alert('У вас нет прав на добавление животного');
+      toast.error('У вас нет прав на добавление животного');
       return;
     }
 
-    const { name, type, vetId } = newAnimal;
+    const { name, type, vetId, image } = newAnimal;
     if (!name || !type || !vetId) {
-      alert('Пожалуйста, заполните все поля');
+      toast.error('Пожалуйста, заполните все поля');
       return;
     }
 
-    fetch('http://localhost:5000/animals', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newAnimal),
-    })
+    dispatch(addAnimalAsync({ name, type, vetId, image }))
+      .unwrap()
       .then(() => {
         setNewAnimal({ name: '', type: '', vetId: '', image: '' });
-        dispatch(fetchAnimals());
+        toast.success('Животное успешно добавлено!');
       })
-      .catch(() => alert('Ошибка добавления животного'));
+      .catch((err) => toast.error(`Ошибка добавления: ${err}`));
   }, [newAnimal, dispatch, role]);
 
-  const handleUpdateAnimal = () => {
-    fetch(`http://localhost:5000/animals/${editAnimal.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editAnimal),
-    })
+  const handleUpdateAnimal = useCallback(() => {
+    if (role !== 'vet') {
+      toast.error('У вас нет прав на редактирование животного');
+      return;
+    }
+
+    dispatch(updateAnimalAsync({ id: editAnimal.id, name: editAnimal.name, type: editAnimal.type, vetId: editAnimal.vetId, image: editAnimal.image }))
+      .unwrap()
       .then(() => {
         setEditAnimal(null);
-        dispatch(fetchAnimals());
+        toast.success('Животное успешно обновлено!');
       })
-      .catch(() => alert('Ошибка обновления животного'));
-  };
+      .catch((err) => toast.error(`Ошибка обновления: ${err}`));
+  }, [editAnimal, dispatch, role]);
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -242,4 +228,3 @@ export default function Vets() {
     </div>
   );
 }
-  

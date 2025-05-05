@@ -1,7 +1,10 @@
+// src/pages/Chat.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchChatHistory, sendMessage } from '../redux/chatSlice';
+import { fetchChatHistoryThunk, sendMessageThunk } from '../redux/chatSlice';
+import { get } from '../services/apiService';
 import { FiSend, FiPaperclip, FiDownload } from 'react-icons/fi';
+import { toast } from 'react-toastify';
 
 const Chat = () => {
   const dispatch = useDispatch();
@@ -11,23 +14,20 @@ const Chat = () => {
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  // Загрузка истории чата при монтировании компонента
   useEffect(() => {
-    dispatch(fetchChatHistory());
+    dispatch(fetchChatHistoryThunk());
   }, [dispatch]);
 
-  // Прокрутка к последнему сообщению при обновлении списка сообщений
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
 
-  // Обработчик отправки сообщения
   const handleSubmit = (e) => {
     e.preventDefault();
     if (newMessage.trim() || selectedFile) {
-      dispatch(sendMessage({ message: newMessage, file: selectedFile }))
+      dispatch(sendMessageThunk({ message: newMessage, file: selectedFile }))
         .unwrap()
         .then(() => {
           setNewMessage('');
@@ -37,24 +37,21 @@ const Chat = () => {
           }
         })
         .catch((error) => {
-          console.error('Ошибка при отправке сообщения:', error);
+          toast.error(`Ошибка при отправке сообщения: ${error}`);
         });
     }
   };
 
-  // Обработчик выбора файла
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0]);
     }
   };
 
-  // Обработчик клика по кнопке выбора файла
   const handleFileButtonClick = () => {
     fileInputRef.current.click();
   };
 
-  // Функция для форматирования даты
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleString('ru-RU', {
@@ -66,34 +63,24 @@ const Chat = () => {
     });
   };
 
-  // Функция для скачивания файла
-  const downloadFile = (filePath, fileName) => {
-    const token = localStorage.getItem('token');
-    const fileUrl = `http://localhost:5000/chat/files/${filePath.split('/').pop()}`;
-    
-    // Создаем ссылку для скачивания
-    const link = document.createElement('a');
-    link.href = fileUrl;
-    link.setAttribute('download', fileName);
-    
-    // Добавляем заголовок авторизации
-    fetch(fileUrl, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-    .then(response => response.blob())
-    .then(blob => {
-      const url = window.URL.createObjectURL(blob);
+  const downloadFile = async (filePath, fileName) => {
+    try {
+      const fileUrl = `/chat/files/${filePath.split('/').pop()}`;
+      const response = await get(fileUrl, {
+        responseType: 'blob',
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
       link.href = url;
+      link.setAttribute('download', fileName);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-    })
-    .catch(error => {
-      console.error('Ошибка при скачивании файла:', error);
-    });
+    } catch (error) {
+      toast.error(`Ошибка при скачивании файла: ${error}`);
+    }
   };
 
   return (
@@ -106,7 +93,6 @@ const Chat = () => {
         </div>
       )}
       
-      {/* Область сообщений */}
       <div className="bg-white rounded-lg shadow-md p-4 mb-4 h-96 overflow-y-auto">
         {loading ? (
           <div className="flex justify-center items-center h-full">
@@ -121,7 +107,6 @@ const Chat = () => {
           <div className="space-y-4">
             {messages.map((msg) => (
               <div key={msg.id} className="space-y-2">
-                {/* Сообщение пользователя */}
                 <div className="flex justify-end">
                   <div className="bg-blue-100 rounded-lg p-3 max-w-xs md:max-w-md">
                     <p>{msg.message}</p>
@@ -140,7 +125,6 @@ const Chat = () => {
                   </div>
                 </div>
                 
-                {/* Ответ ИИ */}
                 {msg.reply && (
                   <div className="flex justify-start">
                     <div className="bg-gray-100 rounded-lg p-3 max-w-xs md:max-w-md">
@@ -156,7 +140,6 @@ const Chat = () => {
         )}
       </div>
       
-      {/* Форма отправки сообщения */}
       <form onSubmit={handleSubmit} className="flex flex-col space-y-2">
         <div className="flex items-center">
           <input
@@ -188,7 +171,6 @@ const Chat = () => {
           </button>
         </div>
         
-        {/* Скрытый input для выбора файла */}
         <input
           type="file"
           ref={fileInputRef}
@@ -196,7 +178,6 @@ const Chat = () => {
           className="hidden"
         />
         
-        {/* Отображение выбранного файла */}
         {selectedFile && (
           <div className="bg-gray-100 p-2 rounded flex justify-between items-center">
             <div className="flex items-center">
@@ -213,7 +194,7 @@ const Chat = () => {
               }}
               className="text-red-500 hover:text-red-700 focus:outline-none"
             >
-              &times;
+              ×
             </button>
           </div>
         )}

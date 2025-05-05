@@ -1,76 +1,51 @@
+// src/redux/animalSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { fetchPets, createPet, updatePet, deletePet } from '../services/apiService';
 
-// Fetch animals
-export const fetchAnimals = createAsyncThunk(
+export const fetchAnimalsThunk = createAsyncThunk(
   'animals/fetchAnimals',
-  async (_, { rejectWithValue }) => {
+  async (params, { rejectWithValue }) => {
     try {
-      const response = await fetch('http://localhost:5000/pets');
-      if (!response.ok) throw new Error('Server error!');
-      return await response.json();
+      const response = await fetchPets(params);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
 );
 
-// Add animal
 export const addAnimalAsync = createAsyncThunk(
   'animals/addAnimalAsync',
   async (newAnimal, { rejectWithValue }) => {
     try {
-      const response = await fetch('http://localhost:5000/pets', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(newAnimal),
-      });
-      if (!response.ok) throw new Error('Cannot add animal!');
-      return await response.json();
+      const response = await createPet(newAnimal);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
 );
 
-// Update animal
 export const updateAnimalAsync = createAsyncThunk(
   'animals/updateAnimalAsync',
-  async (animal, { rejectWithValue }) => {
+  async ({ id, ...animal }, { rejectWithValue }) => {
     try {
-      const response = await fetch(`http://localhost:5000/pets/${animal.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(animal),
-      });
-      if (!response.ok) throw new Error('Cannot update animal!');
-      return await response.json();
+      const response = await updatePet(id, animal);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
 );
 
-// Delete animal
 export const deleteAnimalAsync = createAsyncThunk(
   'animals/deleteAnimalAsync',
   async (id, { rejectWithValue }) => {
     try {
-      const response = await fetch(`http://localhost:5000/pets/${id}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-      });
-      if (!response.ok) throw new Error('Cannot delete animal!');
+      await deletePet(id);
       return id;
     } catch (error) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
 );
@@ -92,15 +67,15 @@ const animalSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchAnimals.pending, (state) => {
+      .addCase(fetchAnimalsThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchAnimals.fulfilled, (state, action) => {
+      .addCase(fetchAnimalsThunk.fulfilled, (state, action) => {
         state.loading = false;
         state.items = action.payload;
       })
-      .addCase(fetchAnimals.rejected, (state, action) => {
+      .addCase(fetchAnimalsThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

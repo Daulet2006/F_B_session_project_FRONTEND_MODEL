@@ -1,31 +1,32 @@
+// src/pages/Products.jsx
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
-import Modal from '../components/Modal'; // Import Modal component
-import { 
-  fetchProducts, 
-  addProductAsync, 
-  updateProductAsync, 
-  deleteProductAsync 
+import Modal from '../components/Modal';
+import {
+  fetchProductsThunk,
+  addProductAsync,
+  updateProductAsync,
+  deleteProductAsync
 } from '../redux/productSlice';
-import { fetchCategories } from '../redux/categorySlice'; // Импорт для категорий
-import { addProductToCart } from '../redux/cartSlice'; // Импорт для добавления в корзину
+import { fetchCategoriesThunk } from '../redux/categorySlice';
+import { addProductToCart } from '../redux/cartSlice';
 
 export default function Products() {
   const dispatch = useDispatch();
   const { items: products, loading: productsLoading, error: productsError } = useSelector(state => state.products);
-  const { items: categories, loading: categoriesLoading, error: categoriesError } = useSelector(state => state.categories); // Получаем категории
-  const { user, role, token } = useSelector(state => state.auth); // Получаем роль, токен и пользователя
+  const { items: categories, loading: categoriesLoading, error: categoriesError } = useSelector(state => state.categories);
+  const { user, role } = useSelector(state => state.auth);
 
   const [showForm, setShowForm] = useState(false);
   const [editMode, setEditMode] = useState(false);
-  const [currentProduct, setCurrentProduct] = useState({ id: null, name: '', description: '', price: '', categoryId: '', image: null }); // Добавляем categoryId и image
+  const [currentProduct, setCurrentProduct] = useState({ id: null, name: '', description: '', price: '', categoryId: '', image: null });
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState(null);
 
   useEffect(() => {
-    dispatch(fetchProducts());
-    dispatch(fetchCategories()); // Загружаем категории при монтировании
+    dispatch(fetchProductsThunk());
+    dispatch(fetchCategoriesThunk());
   }, [dispatch]);
 
   const handleAddClick = () => {
@@ -34,7 +35,7 @@ export default function Products() {
       return;
     }
     setEditMode(false);
-    setCurrentProduct({ id: null, name: '', description: '', price: '', categoryId: categories[0]?.id || '', image: null }); // Устанавливаем первую категорию по умолчанию
+    setCurrentProduct({ id: null, name: '', description: '', price: '', categoryId: categories[0]?.id || '', image: null });
     setShowForm(true);
   };
 
@@ -44,7 +45,6 @@ export default function Products() {
       return;
     }
     setEditMode(true);
-    // Убедимся, что categoryId существует в продукте, иначе установим пустую строку или дефолтное значение
     setCurrentProduct({ ...product, categoryId: product.categoryId || (categories[0]?.id || '') });
     setShowForm(true);
   };
@@ -57,7 +57,7 @@ export default function Products() {
       return;
     }
     dispatch(deleteProductAsync(productId))
-      .unwrap() // Используем unwrap для обработки промиса thunk
+      .unwrap()
       .then(() => {
         toast.success('Товар успешно удален!');
       })
@@ -89,19 +89,16 @@ export default function Products() {
       return;
     }
 
-    // Проверка на заполнение обязательных полей
     if (!currentProduct.name || !currentProduct.description || !currentProduct.price || !currentProduct.categoryId) {
         toast.error('Пожалуйста, заполните все обязательные поля (Название, Описание, Цена, Категория).');
         return;
     }
 
-    // Подготовка данных для отправки (без ID для нового продукта)
     const productDataToSend = {
         name: currentProduct.name,
         description: currentProduct.description,
-        price: parseFloat(currentProduct.price), // Убедимся, что цена - число
-        categoryId: parseInt(currentProduct.categoryId, 10), // Убедимся, что ID категории - число
-        // Логика для изображения будет добавлена позже, если необходимо
+        price: parseFloat(currentProduct.price),
+        categoryId: parseInt(currentProduct.categoryId, 10),
     };
 
     const action = editMode
@@ -133,11 +130,9 @@ export default function Products() {
       toast.error('Пожалуйста, войдите, чтобы добавить товар в корзину.');
       return;
     }
-    // Передаем только необходимые данные
     dispatch(addProductToCart({ id: product.id, name: product.name, price: product.price }));
   };
 
-  // Форма добавления/редактирования
   const renderForm = () => (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center z-50">
       <div className="relative mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
@@ -169,11 +164,10 @@ export default function Products() {
             value={currentProduct.price}
             onChange={handleInputChange}
             required
-            step="0.01" // Для копеек
-            min="0" // Цена не может быть отрицательной
+            step="0.01"
+            min="0"
             className="w-full p-2 border rounded"
           />
-          {/* Выпадающий список категорий */}
           <select
             name="categoryId"
             value={currentProduct.categoryId}
@@ -191,22 +185,6 @@ export default function Products() {
               </option>
             ))}
           </select>
-
-          {/* Поле для загрузки изображения (пока без функционала загрузки) */}
-          {/* <input
-            type="file"
-            name="image"
-            accept="image/*"
-            onChange={handleInputChange}
-            className="w-full p-2 border rounded file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-          />
-          {currentProduct.image && typeof currentProduct.image === 'object' && (
-            <img src={URL.createObjectURL(currentProduct.image)} alt="Preview" className="mt-2 h-20 w-auto"/>
-          )}
-          {currentProduct.image && typeof currentProduct.image === 'string' && (
-             <p className="text-sm text-gray-500 mt-1">Текущий файл: {currentProduct.image}</p>
-          )} */}
-
           <div className="flex justify-end space-x-2">
             <button
               type="button"
@@ -253,14 +231,12 @@ export default function Products() {
           {products.map(product => (
             <div key={product.id} className="bg-white rounded-xl shadow-lg border border-gray-200 p-5 flex flex-col justify-between hover:shadow-2xl transition-all">
               <div>
-                {/* Отображение изображения, если есть */} 
                 {product.image_url && (
                     <img src={product.image_url} alt={product.name} className="w-full h-40 object-cover rounded mb-3" />
                 )}
                 <h2 className="text-xl font-semibold text-gray-800 mb-2">{product.name}</h2>
                 <p className="text-gray-600 text-sm mb-2">{product.description}</p>
                 <p className="text-lg font-bold text-primary mb-3">{product.price} $</p>
-                {/* Отображение категории */} 
                 {product.category && <p className="text-sm text-gray-500 mb-3">Категория: {product.category.name}</p>}
               </div>
               <div className="mt-4 flex flex-col space-y-2">
@@ -294,7 +270,6 @@ export default function Products() {
 
       {showForm && renderForm()}
 
-      {/* Модальное окно подтверждения удаления */} 
       <Modal isOpen={isDeleteModalOpen} onClose={closeDeleteModal}>
         <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Подтверждение удаления</h3>
         <p className="text-sm text-gray-500 mb-4">Вы уверены, что хотите удалить этот товар?</p>

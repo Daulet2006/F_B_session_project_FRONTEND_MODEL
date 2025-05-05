@@ -1,19 +1,15 @@
 // src/redux/categorySlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { fetchCategories } from '../services/apiService';
 
-// Async thunk для загрузки категорий
-export const fetchCategories = createAsyncThunk(
+export const fetchCategoriesThunk = createAsyncThunk(
   'categories/fetchCategories',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await fetch('http://localhost:5000/categories'); // Замените URL на ваш API эндпоинт для категорий
-      if (!response.ok) {
-        throw new Error('Не удалось загрузить категории');
-      }
-      const data = await response.json();
-      return data;
+      const response = await fetchCategories();
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
 );
@@ -28,15 +24,15 @@ const categorySlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
-      .addCase(fetchCategories.pending, (state) => {
+      .addCase(fetchCategoriesThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchCategories.fulfilled, (state, action) => {
+      .addCase(fetchCategoriesThunk.fulfilled, (state, action) => {
         state.loading = false;
         state.items = action.payload;
       })
-      .addCase(fetchCategories.rejected, (state, action) => {
+      .addCase(fetchCategoriesThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

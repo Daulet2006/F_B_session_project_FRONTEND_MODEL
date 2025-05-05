@@ -2,7 +2,9 @@
 import React from 'react';
 
 export default function Modal({ isOpen, onClose, onConfirm, title, children }) {
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return null;
+  }
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full flex justify-center items-center z-50">

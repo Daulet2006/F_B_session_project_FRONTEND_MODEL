@@ -1,118 +1,69 @@
 // src/redux/appointmentSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { toast } from 'react-toastify';
+import { fetchAppointments, createAppointment, updateAppointment, deleteAppointment } from '../services/apiService';
 
-// Helper to get token
-const getToken = (getState) => {
-  const { token } = getState().auth.user;
-  return token;
-};
-
-// Async thunk for fetching appointments
 export const fetchAppointmentsAsync = createAsyncThunk(
   'appointments/fetchAppointments',
   async (_, { getState, rejectWithValue }) => {
-    const token = getToken(getState);
-    if (!token) return rejectWithValue('No token found');
     try {
-      const response = await fetch('http://localhost:5000/appointments', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to fetch appointments');
-      }
-      const data = await response.json();
-      return data;
+      const { token } = getState().auth;
+      if (!token) return rejectWithValue('No token found');
+      const response = await fetchAppointments();
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
 );
 
-// Async thunk for creating an appointment
 export const createAppointmentAsync = createAsyncThunk(
   'appointments/createAppointment',
   async (appointmentData, { getState, rejectWithValue }) => {
-    const token = getToken(getState);
-    if (!token) return rejectWithValue('No token found');
     try {
-      const response = await fetch('http://localhost:5000/appointments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(appointmentData),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create appointment');
-      }
-      const data = await response.json();
+      const { token } = getState().auth;
+      if (!token) return rejectWithValue('No token found');
+      const response = await createAppointment(appointmentData);
       toast.success('Запись успешно создана!');
-      return data.appointment; // Assuming the backend returns the created appointment
+      return response.data.appointment;
     } catch (error) {
-      toast.error(`Ошибка создания записи: ${error.message}`);
-      return rejectWithValue(error.message);
+      const message = error.response?.data?.message || error.message;
+      toast.error(`Ошибка создания записи: ${message}`);
+      return rejectWithValue(message);
     }
   }
 );
 
-// Async thunk for updating an appointment
 export const updateAppointmentAsync = createAsyncThunk(
   'appointments/updateAppointment',
   async ({ appointmentId, updateData }, { getState, rejectWithValue }) => {
-    const token = getToken(getState);
-    if (!token) return rejectWithValue('No token found');
     try {
-      const response = await fetch(`http://localhost:5000/appointments/${appointmentId}`, {
-        method: 'PUT', // or PATCH depending on your backend
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(updateData),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update appointment');
-      }
-      const data = await response.json();
+      const { token } = getState().auth;
+      if (!token) return rejectWithValue('No token found');
+      const response = await updateAppointment(appointmentId, updateData);
       toast.success('Запись успешно обновлена!');
-      // Return the ID and the updated data to update the state
-      return { id: appointmentId, changes: updateData };
+      return { id: appointmentId, changes: response.data };
     } catch (error) {
-      toast.error(`Ошибка обновления записи: ${error.message}`);
-      return rejectWithValue(error.message);
+      const message = error.response?.data?.message || error.message;
+      toast.error(`Ошибка обновления записи: ${message}`);
+      return rejectWithValue(message);
     }
   }
 );
 
-// Async thunk for deleting an appointment
 export const deleteAppointmentAsync = createAsyncThunk(
   'appointments/deleteAppointment',
   async (appointmentId, { getState, rejectWithValue }) => {
-    const token = getToken(getState);
-    if (!token) return rejectWithValue('No token found');
     try {
-      const response = await fetch(`http://localhost:5000/appointments/${appointmentId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete appointment');
-      }
+      const { token } = getState().auth;
+      if (!token) return rejectWithValue('No token found');
+      await deleteAppointment(appointmentId);
       toast.success('Запись успешно удалена!');
-      return appointmentId; // Return the ID of the deleted appointment
+      return appointmentId;
     } catch (error) {
-      toast.error(`Ошибка удаления записи: ${error.message}`);
-      return rejectWithValue(error.message);
+      const message = error.response?.data?.message || error.message;
+      toast.error(`Ошибка удаления записи: ${message}`);
+      return rejectWithValue(message);
     }
   }
 );
@@ -129,7 +80,6 @@ const appointmentSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
-      // Fetch Appointments
       .addCase(fetchAppointmentsAsync.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -142,9 +92,8 @@ const appointmentSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      // Create Appointment
       .addCase(createAppointmentAsync.pending, (state) => {
-        state.loading = true; // Or a specific loading state for creation
+        state.loading = true;
       })
       .addCase(createAppointmentAsync.fulfilled, (state, action) => {
         state.loading = false;
@@ -152,17 +101,15 @@ const appointmentSlice = createSlice({
       })
       .addCase(createAppointmentAsync.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload; // Or handle error specifically
+        state.error = action.payload;
       })
-      // Update Appointment
       .addCase(updateAppointmentAsync.pending, (state) => {
-        state.loading = true; // Or a specific loading state for update
+        state.loading = true;
       })
       .addCase(updateAppointmentAsync.fulfilled, (state, action) => {
         state.loading = false;
         const index = state.items.findIndex(app => app.id === action.payload.id);
         if (index !== -1) {
-          // Merge the changes into the existing appointment
           state.items[index] = { ...state.items[index], ...action.payload.changes };
         }
       })
@@ -170,9 +117,8 @@ const appointmentSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      // Delete Appointment
       .addCase(deleteAppointmentAsync.pending, (state) => {
-        state.loading = true; // Or a specific loading state for deletion
+        state.loading = true;
       })
       .addCase(deleteAppointmentAsync.fulfilled, (state, action) => {
         state.loading = false;

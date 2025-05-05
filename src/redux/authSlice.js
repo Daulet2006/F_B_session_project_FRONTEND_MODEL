@@ -1,4 +1,4 @@
-// src/redux/userSlice.js
+// src/redux/authSlice.js
 import { createSlice } from '@reduxjs/toolkit';
 
 const savedUser = JSON.parse(localStorage.getItem('user'));
@@ -29,8 +29,19 @@ const userSlice = createSlice({
       localStorage.removeItem('user');
       localStorage.removeItem('token'); // Remove token from localStorage
     },
+    changeRole: (state, action) => {
+      // Обновляем роль пользователя (для демонстрации)
+      state.role = action.payload;
+      if (state.user) {
+        state.user = { ...state.user, role: action.payload };
+        localStorage.setItem('user', JSON.stringify({
+          user: state.user,
+          role: action.payload
+        }));
+      }
+    },
   },
 });
 
-export const { login, logout } = userSlice.actions;
+export const { login, logout, changeRole } = userSlice.actions;
 export default userSlice.reducer;

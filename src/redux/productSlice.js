@@ -1,95 +1,51 @@
 // src/redux/productSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { fetchProducts, createProduct, updateProduct, deleteProduct } from '../services/apiService';
 
-// Async thunk для загрузки продуктов
-export const fetchProducts = createAsyncThunk(
+export const fetchProductsThunk = createAsyncThunk(
   'products/fetchProducts',
-  async (_, { rejectWithValue }) => {
+  async (params, { rejectWithValue }) => {
     try {
-      const response = await fetch('http://localhost:5000/products'); // Используем порт 5000
-      if (!response.ok) {
-        throw new Error('Не удалось загрузить продукты');
-      }
-      const data = await response.json();
-      return data;
+      const response = await fetchProducts(params);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
 );
 
-// Async thunk для добавления продукта
 export const addProductAsync = createAsyncThunk(
   'products/addProductAsync',
-  async (productData, { rejectWithValue, getState }) => {
-    const { token } = getState().auth; // Получаем токен
+  async (productData, { rejectWithValue }) => {
     try {
-      const response = await fetch('http://localhost:5000/products', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` // Добавляем токен авторизации
-        },
-        body: JSON.stringify(productData),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Не удалось добавить продукт');
-      }
-      const data = await response.json();
-      return data;
+      const response = await createProduct(productData);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
 );
 
-// Async thunk для обновления продукта
 export const updateProductAsync = createAsyncThunk(
   'products/updateProductAsync',
-  async ({ id, productData }, { rejectWithValue, getState }) => {
-    const { token } = getState().auth; // Получаем токен
+  async ({ id, productData }, { rejectWithValue }) => {
     try {
-      const response = await fetch(`http://localhost:5000/products/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` // Добавляем токен авторизации
-        },
-        body: JSON.stringify(productData),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Не удалось обновить продукт');
-      }
-      const data = await response.json();
-      return data;
+      const response = await updateProduct(id, productData);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
 );
 
-// Async thunk для удаления продукта
 export const deleteProductAsync = createAsyncThunk(
   'products/deleteProductAsync',
-  async (id, { rejectWithValue, getState }) => {
-    const { token } = getState().auth; // Получаем токен
+  async (id, { rejectWithValue }) => {
     try {
-      const response = await fetch(`http://localhost:5000/products/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}` // Добавляем токен авторизации
-        }
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Не удалось удалить продукт');
-      }
-      // API может не возвращать тело при DELETE, возвращаем ID для обновления состояния
+      await deleteProduct(id);
       return id;
     } catch (error) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
 );
@@ -104,32 +60,29 @@ const productSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
-      // Fetch Products
-      .addCase(fetchProducts.pending, (state) => {
+      .addCase(fetchProductsThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchProducts.fulfilled, (state, action) => {
+      .addCase(fetchProductsThunk.fulfilled, (state, action) => {
         state.loading = false;
         state.items = action.payload;
       })
-      .addCase(fetchProducts.rejected, (state, action) => {
+      .addCase(fetchProductsThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
-      // Add Product
       .addCase(addProductAsync.pending, (state) => {
-        state.loading = true; // Можно установить loading или специфичный флаг
+        state.loading = true;
       })
       .addCase(addProductAsync.fulfilled, (state, action) => {
         state.loading = false;
-        state.items.push(action.payload); // Добавляем новый продукт в массив
+        state.items.push(action.payload);
       })
       .addCase(addProductAsync.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload; // Сохраняем ошибку
+        state.error = action.payload;
       })
-      // Update Product
       .addCase(updateProductAsync.pending, (state) => {
         state.loading = true;
       })
@@ -137,20 +90,19 @@ const productSlice = createSlice({
         state.loading = false;
         const index = state.items.findIndex(item => item.id === action.payload.id);
         if (index !== -1) {
-          state.items[index] = action.payload; // Обновляем продукт в массиве
+          state.items[index] = action.payload;
         }
       })
       .addCase(updateProductAsync.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
-      // Delete Product
       .addCase(deleteProductAsync.pending, (state) => {
         state.loading = true;
       })
       .addCase(deleteProductAsync.fulfilled, (state, action) => {
         state.loading = false;
-        state.items = state.items.filter(item => item.id !== action.payload); // Удаляем продукт из массива по ID
+        state.items = state.items.filter(item => item.id !== action.payload);
       })
       .addCase(deleteProductAsync.rejected, (state, action) => {
         state.loading = false;
