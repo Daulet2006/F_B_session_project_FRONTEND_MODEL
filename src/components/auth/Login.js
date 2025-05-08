@@ -1,4 +1,3 @@
-// src/components/auth/Login.js:
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
@@ -49,7 +48,12 @@ const Login = () => {
     e.preventDefault();
 
     if (validate()) {
-      dispatch(login(formData));
+      dispatch(login(formData)).catch((err) => {
+        // Display the ban message or other errors
+        if (err.message === 'Your account has been banned. Please contact support.') {
+          setErrors({ general: 'Your account has been banned. Please contact support.' });
+        }
+      });
     }
   };
 
@@ -59,12 +63,11 @@ const Login = () => {
         <h1 className="text-3xl font-bold text-center mb-6 text-emerald-600">Login</h1>
 
         {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
+        {errors.general && <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">{errors.general}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label htmlFor="email" className="form-label">
-              Email
-            </label>
+            <label htmlFor="email" className="form-label">Email</label>
             <input
               type="email"
               id="email"
@@ -77,9 +80,7 @@ const Login = () => {
           </div>
 
           <div className="mb-6">
-            <label htmlFor="password" className="form-label">
-              Password
-            </label>
+            <label htmlFor="password" className="form-label">Password</label>
             <input
               type="password"
               id="password"

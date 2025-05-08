@@ -1,4 +1,3 @@
-// src/utils/api.js
 import axios from "axios";
 
 // Create an axios instance
@@ -59,4 +58,4 @@ api.interceptors.response.use(
   },
 );
 
-export default api; 
+export default api;

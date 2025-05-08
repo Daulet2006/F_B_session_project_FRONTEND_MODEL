@@ -102,7 +102,12 @@ const authSlice = createSlice({
       .addCase(login.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload
-        toast.error(action.payload || "Login failed")
+        // Обработка ошибки бана
+        if (action.payload === "Your account has been banned. Please contact support.") {
+          toast.error("Ваш аккаунт заблокирован. Обратитесь в поддержку.")
+        } else {
+          toast.error(action.payload || "Login failed")
+        }
       })
 
       // Register

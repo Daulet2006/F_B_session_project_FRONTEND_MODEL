@@ -13,8 +13,8 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
    // Async thunks
    export const fetchProducts = createAsyncThunk("products/fetchAll", async (_, { rejectWithValue }) => {
      try {
-       const response = await api.get("/products");
-       return response.data.products;
+       const response = await api.get("/products/");
+       return response.data;
      } catch (error) {
        console.error("fetchProducts error:", error.response?.data || error.message);
        return rejectWithValue(error.response?.data?.message || "Не удалось загрузить продукты");
